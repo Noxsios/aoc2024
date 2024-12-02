@@ -17,11 +17,19 @@ pub fn main() {
 
   let assert Ok(ordered_left) = left |> list.map(int.parse) |> result.all
   let assert Ok(ordered_right) = right |> list.map(int.parse) |> result.all
+
+  // part 1
   list.map2(
     ordered_left |> list.sort(int.compare),
     ordered_right |> list.sort(int.compare),
     fn(l, r) { int.absolute_value(l - r) },
   )
+  |> list.fold(0, fn(a, b) { a + b })
+  |> io.debug
+
+  // part 2
+  ordered_left
+  |> list.map(fn(l) { list.count(ordered_right, fn(r) { l == r }) * l })
   |> list.fold(0, fn(a, b) { a + b })
   |> io.debug
 }
