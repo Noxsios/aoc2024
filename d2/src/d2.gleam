@@ -31,14 +31,12 @@ pub fn main() {
   known_unsafe
   |> list.map(fn(u) {
     let len = list.length(u)
-    let arr = list.range(1, len)
     let could =
-      arr
+      list.range(1, len)
       |> list.any(fn(i) {
-        let before = list.take(u, i-1)
+        let before = list.take(u, i - 1)
         let after = list.drop(u, i)
-        let combined = list.append(before, after)
-        is_safe(combined)
+        is_safe(list.append(before, after))
       })
     case could {
       True -> 1
@@ -77,9 +75,8 @@ fn is_safe(in: List(Int)) -> Bool {
 }
 
 fn good_direction(l: List(Int)) -> Bool {
-  let pairs = l |> list.window_by_2
   let cmp =
-    pairs
+    list.window_by_2(l)
     |> list.map(fn(p) {
       let left = p |> pair.first
       let right = p |> pair.second
