@@ -24,12 +24,12 @@ pub fn main() {
     ordered_right |> list.sort(int.compare),
     fn(l, r) { int.absolute_value(l - r) },
   )
-  |> list.fold(0, fn(a, b) { a + b })
+  |> list.fold(0, int.add)
   |> io.debug
 
   // part 2
   ordered_left
   |> list.map(fn(l) { list.count(ordered_right, fn(r) { l == r }) * l })
-  |> list.fold(0, fn(a, b) { a + b })
+  |> list.fold(0, int.add)
   |> io.debug
 }
