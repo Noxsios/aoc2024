@@ -2,6 +2,7 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/order
+import gleam/pair
 import gleam/result
 import gleam/string
 import simplifile
@@ -18,44 +19,70 @@ pub fn main() {
     })
 
   // part 1
-  lists
-  |> list.map(is_safe)
-  |> list.count(fn(a) { a == True })
+  let safe =
+    lists
+    |> list.map(is_safe)
+    |> list.count(fn(a) { a == True })
+    |> io.debug
+
+  // part 2
+  let known_unsafe = lists |> list.filter(fn(l) { !is_safe(l) })
+
+  known_unsafe
+  |> list.map(fn(u) {
+    let len = list.length(u)
+    let arr = list.range(1, len)
+    let could =
+      arr
+      |> list.any(fn(i) {
+        let before = list.take(u, i-1)
+        let after = list.drop(u, i)
+        let combined = list.append(before, after)
+        is_safe(combined)
+      })
+    case could {
+      True -> 1
+      False -> 0
+    }
+  })
+  |> list.fold(safe, int.add)
   |> io.debug
 }
 
-fn is_safe(l: List(Int)) -> Bool {
+fn is_safe(in: List(Int)) -> Bool {
   // levels are either ALL increasing/decreasing
   // any 2 adjacent levels differ by at least 1 and at most 3
 
-  l
-  |> list.window(2)
-  |> list.all(fn(w) {
-    let assert Ok(left) = list.first(w)
-    let assert Ok(right) = list.last(w)
+  in
+  |> list.window_by_2
+  |> list.all(fn(p) {
+    let left = p |> pair.first
+    let right = p |> pair.second
 
     let diff = right - left
 
+    let gd = good_direction(in)
+
     case diff {
-      -3 -> True && good_direction(l)
-      -2 -> True && good_direction(l)
-      -1 -> True && good_direction(l)
+      -3 -> True && gd
+      -2 -> True && gd
+      -1 -> True && gd
       0 -> False
-      1 -> True && good_direction(l)
-      2 -> True && good_direction(l)
-      3 -> True && good_direction(l)
+      1 -> True && gd
+      2 -> True && gd
+      3 -> True && gd
       _ -> False
     }
   })
 }
 
 fn good_direction(l: List(Int)) -> Bool {
-  let pairs = l |> list.window(2)
+  let pairs = l |> list.window_by_2
   let cmp =
     pairs
-    |> list.map(fn(m) {
-      let assert Ok(left) = list.first(m)
-      let assert Ok(right) = list.last(m)
+    |> list.map(fn(p) {
+      let left = p |> pair.first
+      let right = p |> pair.second
 
       int.compare(right, left)
     })
