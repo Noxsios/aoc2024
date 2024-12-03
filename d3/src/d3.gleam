@@ -10,14 +10,26 @@ import simplifile
 pub fn main() {
   let assert Ok(in) = simplifile.read(from: "./input.txt")
 
-  // let got =
-  // "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))"
-  // want mul(2,4) mul(5,5) mul(11,8)mul(8,5)
+  parse_memory(in)
 
-  // let assert Ok(re) = regexp.from_string("(mul\\(\\d*,\\d*\\))")
+  cleanup_memory(in)
+}
+
+fn cleanup_memory(mem) {
+  let assert Ok(to_remove) = regexp.from_string("don't\\(\\)[\\s\\S]*?do\\(\\)")
+
+  let assert Ok(ending_to_remove) = regexp.from_string("don't\\(\\)[\\s\\S]*?$")
+
+  to_remove
+  |> regexp.replace(mem, "")
+  |> regexp.replace(ending_to_remove, _, "")
+  |> parse_memory
+}
+
+fn parse_memory(mem) {
   let assert Ok(re) = regexp.from_string("(mul\\((\\d*,\\d*)\\))")
 
-  regexp.scan(re, in)
+  regexp.scan(re, mem)
   |> list.map(fn(m) { m.submatches })
   |> list.map(fn(s) {
     let assert Ok(last) = s |> list.last
