@@ -2,6 +2,7 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option
+import gleam/queue
 import gleam/regexp
 import gleam/result
 import gleam/string
@@ -9,43 +10,33 @@ import simplifile
 
 pub fn main() {
   let assert Ok(in) = simplifile.read(from: "./input.txt")
+  let lines = in |> string.split("\n")
 
-  parse_memory(in)
+  // io.debug(lines)
 
-  cleanup_memory(in)
-}
+  let equals_xmas = fn(l) {
+    l == ["X", "M", "A", "S"] || l == ["S", "A", "M", "X"]
+  }
 
-fn cleanup_memory(mem) {
-  let assert Ok(to_remove) = regexp.from_string("don't\\(\\)[\\s\\S]*?do\\(\\)")
+  let count_xmas_in_matrix = fn(m) {
+    m
+    |> list.map(list.window(_, 4))
+    |> list.map(list.count(_, equals_xmas))
+    |> list.fold(0, int.add)
+  }
 
-  let assert Ok(ending_to_remove) = regexp.from_string("don't\\(\\)[\\s\\S]*?$")
-
-  to_remove
-  |> regexp.replace(mem, "")
-  |> regexp.replace(ending_to_remove, _, "")
-  |> parse_memory
-}
-
-fn parse_memory(mem) {
-  let assert Ok(re) = regexp.from_string("(mul\\((\\d*,\\d*)\\))")
-
-  regexp.scan(re, mem)
-  |> list.map(fn(m) { m.submatches })
-  |> list.map(fn(s) {
-    let assert Ok(last) = s |> list.last
-    last
-  })
-  |> list.map(fn(o) {
-    option.lazy_unwrap(o, fn() {
-      io.print_error("error parsing")
-      ""
-    })
-  })
-  |> list.map(fn(s) {
-    let assert Ok(args) =
-      string.split(s, ",") |> list.map(int.parse) |> result.all
-    args |> list.fold(1, int.multiply)
-  })
-  |> list.fold(0, int.add)
+  // horizontal + backwards
+  lines
+  |> list.map(string.split(_, ""))
+  |> count_xmas_in_matrix
   |> io.debug
+  
+  // vertical + backwards
+  let cols = lines |> list.first |> result.unwrap("") |> string.length
+  list.range(0, cols - 1)
+  |> list.map(fn(idx) { list.map(lines, fn(l) { string.slice(l, idx, 1) }) })
+  |> count_xmas_in_matrix
+  |> io.debug
+
+  // diagonal + backwards
 }
