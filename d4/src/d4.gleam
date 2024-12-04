@@ -1,9 +1,6 @@
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option
-import gleam/queue
-import gleam/regexp
 import gleam/result
 import gleam/string
 import simplifile
@@ -95,6 +92,44 @@ pub fn main() {
         extract_sequence(lines, r, c, direction)
       })
     })
+  })
+  |> count_xmas_in_matrix
+  |> io.debug
+
+  // part 2
+  let extract_sequence = fn(grid, r, c) {
+    case
+      { { r + 2 < rows } && { c + 2 < cols } }
+      || { { r + 2 < rows } && { c - 2 >= 0 } }
+    {
+      True -> [
+        // TL
+        get_coord(grid, c, r),
+        // TR
+        get_coord(grid, c + 2, r),
+        // M
+        get_coord(grid, c + 1, r + 1),
+        // BR
+        get_coord(grid, c, r + 2),
+        // BL
+        get_coord(grid, c + 2, r + 2),
+      ]
+      False -> []
+    }
+  }
+
+  let count_xmas_in_matrix = fn(m) {
+    m
+    |> list.count(fn(l) {
+      l == ["M", "S", "A", "M", "S"]
+      || l == ["S", "S", "A", "M", "M"]
+      || l == ["S", "M", "A", "S", "M"]
+      || l == ["M", "M", "A", "S", "S"]
+    })
+  }
+
+  list.flat_map(list.range(0, rows - 1), fn(r) {
+    list.map(list.range(0, cols - 1), fn(c) { extract_sequence(lines, r, c) })
   })
   |> count_xmas_in_matrix
   |> io.debug
