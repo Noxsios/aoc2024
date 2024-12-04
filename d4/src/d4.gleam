@@ -89,17 +89,13 @@ pub fn main() {
 
   let directions = ["horizontal", "vertical", "diag_right", "diag_left"]
 
-  list.map(directions, fn(direction) {
-    list.map(list.range(0, rows - 1), fn(r) {
+  list.flat_map(directions, fn(direction) {
+    list.flat_map(list.range(0, rows - 1), fn(r) {
       list.map(list.range(0, cols - 1), fn(c) {
         extract_sequence(lines, r, c, direction)
       })
-      |> list.filter(fn(seq) { !list.is_empty(seq) })
     })
-    |> list.filter(fn(seq) { !list.is_empty(seq) })
   })
-  |> list.flatten
-  |> list.flatten
   |> count_xmas_in_matrix
   |> io.debug
 }
