@@ -1,64 +1,68 @@
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option
-import gleam/regexp
+import gleam/pair
 import gleam/result
 import gleam/string
+import gleam/yielder
 import simplifile
 
 pub fn main() {
   let assert Ok(in) = simplifile.read(from: "./input.txt")
-
-  parse_memory(in)
-
-  cleanup_memory(in)
-}
-
-fn cleanup_memory(mem) {
-  let assert Ok(to_remove) = regexp.from_string("don't\\(\\)[\\s\\S]*?do\\(\\)")
-
-  let assert Ok(ending_to_remove) = regexp.from_string("don't\\(\\)[\\s\\S]*?$")
-
-  to_remove
-  |> regexp.replace(mem, "")
-  |> regexp.replace(ending_to_remove, _, "")
-  |> parse_memory
-}
-
-fn parse_memory(mem) {
-  let assert Ok(re) = regexp.from_string("(mul\\((\\d*,\\d*)\\))")
-
-  regexp.scan(re, mem)
-  |> list.map(fn(m) { m.submatches })
-  |> list.map(fn(s) {
-    let assert Ok(last) = s |> list.last
-    last
-  })
-  |> list.map(fn(o) {
-    option.lazy_unwrap(o, fn() {
-      io.print_error("error parsing")
-      ""
+  let assert Ok(parts) = in |> string.split_once("\n\n")
+  let rules =
+    parts
+    |> pair.first
+    |> string.split("\n")
+    |> list.map(fn(r) {
+      let assert Ok(declaration) = string.split_once(r, "|")
+      let assert Ok(before) = int.parse(declaration |> pair.first)
+      let assert Ok(after) = int.parse(declaration |> pair.second)
+      #(before, after)
     })
-  })
-  |> list.map(fn(s) {
-    let assert Ok(args) =
-      string.split(s, ",") |> list.map(int.parse) |> result.all
-    args |> list.fold(1, int.multiply)
-  })
-  |> list.fold(0, int.add)
-  |> io.debug
+  let sets =
+    parts
+    |> pair.second
+    |> string.split("\n")
+    |> list.map(string.split(_, ","))
+    |> list.map(fn(nums) {
+      let assert Ok(int_arr) = nums |> list.map(int.parse) |> result.all
+      int_arr
+    })
+
+  let validate_all = fn(page_set) {
+    rules
+    |> list.all(validate_rule(page_set, _))
+  }
+
+  sets
+  |> list.filter(validate_all)
+  |> list.fold(0, fn(acc, l) {
+    let len = l |> list.length
+    let assert Ok(middle) = yielder.from_list(l) |> yielder.at(len / 2)
+
+    acc + middle
+  }) |> io.debug
 }
 
-fn get_coord(grid, x, y) {
-  grid
-  |> list.index_map(fn(row, idx) {
-    case idx == y - 1 {
-      True -> {
-        string.slice(row, x - 1, 1)
-      }
-      False -> ""
-    }
+fn validate_rule(l, r) {
+  // io.debug(l)
+  // io.debug(r)
+
+  let indexed = list.index_map(l, fn(v, i) { #(i, v) })
+
+  let first_indices =
+    indexed
+    |> list.filter(fn(p) { pair.second(p) == pair.first(r) })
+
+  let second_indices =
+    indexed
+    |> list.filter(fn(p) { pair.second(p) == pair.second(r) })
+
+  list.is_empty(first_indices)
+  || list.is_empty(second_indices)
+  || first_indices
+  |> list.all(fn(f) {
+    list.all(second_indices, fn(s) { pair.first(f) < pair.first(s) })
   })
-  |> string.join("")
 }
