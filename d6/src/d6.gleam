@@ -12,7 +12,7 @@ pub fn main() {
     |> list.index_map(fn(row, i) {
       row
       |> string.split("")
-      |> list.index_map(fn(c, j) { #(j + 1, string.length(row) - i, c) })
+      |> list.index_map(fn(c, j) { #(j + 1, list.length(rows) - i, c) })
     })
     |> list.flatten
 
@@ -26,8 +26,27 @@ pub fn main() {
     |> result.unwrap(#(0, 0, ""))
 
   walk(coords, [start], start, "up")
+  |> list.reverse
   |> list.unique
+  |> list.length
   |> io.debug
+
+  coords
+  |> list.filter(fn(coord) { coord.2 == "." })
+  |> list.filter(fn(start) {
+    let mutated =
+      coords
+      |> list.map(fn(coord) {
+        case coord == start {
+          True -> #(start.0, start.1, "#")
+          False -> coord
+        }
+      })
+    walk(mutated, [start], start, "up")
+    |> list.reverse
+    |> list.unique
+    |> list.is_empty
+  })
   |> list.length
   |> io.debug
 }
@@ -35,7 +54,7 @@ pub fn main() {
 fn walk(
   coords,
   route,
-  start: #(Int, Int, String),
+  curr: #(Int, Int, String),
   direction,
 ) -> List(#(Int, Int, String)) {
   let at = fn(x, y) {
@@ -46,10 +65,10 @@ fn walk(
   }
 
   let next = case direction {
-    "up" -> at(start.0, start.1 + 1)
-    "down" -> at(start.0, start.1 - 1)
-    "left" -> at(start.0 - 1, start.1)
-    "right" -> at(start.0 + 1, start.1)
+    "up" -> at(curr.0, curr.1 + 1)
+    "down" -> at(curr.0, curr.1 - 1)
+    "left" -> at(curr.0 - 1, curr.1)
+    "right" -> at(curr.0 + 1, curr.1)
     _ -> panic as "should never hit"
   }
 
@@ -61,16 +80,26 @@ fn walk(
     _ -> panic as "should never hit"
   }
 
-  case
-    // oob
-    next == #(0, 0, "")
-  {
-    True -> route
-    False ->
-      case next.2 == "#" {
-        True ->
-          walk(coords, [start, ..route] |> list.reverse, start, next_direction)
-        False -> walk(coords, [next, ..route] |> list.reverse, next, direction)
+  let is_loop =
+    route
+    |> list.window_by_2
+    |> list.contains(#(next, curr))
+
+  case is_loop {
+    True -> []
+    // make this cleaner
+    False -> {
+      case
+        // oob
+        next == #(0, 0, "")
+      {
+        True -> route
+        False ->
+          case next.2 == "#" {
+            True -> walk(coords, [curr, ..route], curr, next_direction)
+            False -> walk(coords, [next, ..route], next, direction)
+          }
       }
+    }
   }
 }
