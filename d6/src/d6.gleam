@@ -1,92 +1,86 @@
-import gleam/int
 import gleam/io
 import gleam/list
-import gleam/order
-import gleam/pair
 import gleam/result
 import gleam/string
 import simplifile
 
 pub fn main() {
   let assert Ok(in) = simplifile.read(from: "./input.txt")
-  let assert Ok(parts) = in |> string.split_once("\n\n")
-  let rules =
-    parts
-    |> pair.first
-    |> string.split("\n")
-    |> list.map(fn(r) {
-      let assert Ok(declaration) = string.split_once(r, "|")
-      let assert Ok(before) = int.parse(declaration |> pair.first)
-      let assert Ok(after) = int.parse(declaration |> pair.second)
-      #(before, after)
+  let rows = in |> string.split("\n")
+  let coords =
+    rows
+    |> list.index_map(fn(row, i) {
+      row
+      |> string.split("")
+      |> list.index_map(fn(c, j) { #(j + 1, string.length(row) - i, c) })
     })
-  let sets =
-    parts
-    |> pair.second
-    |> string.split("\n")
-    |> list.map(string.split(_, ","))
-    |> list.map(fn(nums) {
-      let assert Ok(int_arr) = nums |> list.map(int.parse) |> result.all
-      int_arr
+    |> list.flatten
+
+  let start =
+    coords
+    |> list.find(fn(coord) {
+      let #(_, _, d) = coord
+
+      d == "^"
+    })
+    |> result.unwrap(#(0, 0, ""))
+
+  let coords =
+    coords
+    |> list.map(fn(coord) {
+      let #(x, y, _) = start
+      case coord == start {
+        True -> #(x, y, ".")
+        False -> coord
+      }
     })
 
-  let validate_all = fn(page_set) {
-    rules
-    |> list.all(validate_rule(page_set, _))
-  }
-
-  // will cause division by 0 error if given an empty list
-  let middle = fn(l) {
-    l
-    |> list.drop(l |> list.length |> int.divide(2) |> result.unwrap(0))
-    |> list.first
-    |> result.unwrap(0)
-  }
-
-  sets
-  |> list.filter(validate_all)
-  |> list.fold(0, fn(acc, l) { acc + middle(l) })
+  // im off by one, but where?
+  walk(coords, [start], start, "up")
+  |> list.unique
   |> io.debug
-
-  // modified from https://dev.to/sethcalebweeks/advent-of-code-5-in-gleam-5h2f
-  // because for the life of me i could not figure out how to write the correct fold sort algo in gleam
-  // really interesting way to determine rules
-  let ordering = fn(a, b) {
-    let lt = list.contains(rules, #(a, b))
-    let gt = list.contains(rules, #(b, a))
-    // matrix cases? TIL
-    case lt, gt {
-      True, _ -> order.Lt
-      _, True -> order.Gt
-      _, _ -> order.Eq
-    }
-  }
-
-  list.fold(sets, 0, fn(sum, update) {
-    let sorted = list.sort(update, ordering)
-    case sorted != update {
-      True -> sum + middle(sorted)
-      False -> sum
-    }
-  })
+  |> list.length
   |> io.debug
 }
 
-fn validate_rule(l, r) {
-  let indexed = list.index_map(l, fn(v, i) { #(i, v) })
+fn walk(
+  coords,
+  route,
+  start: #(Int, Int, String),
+  direction,
+) -> List(#(Int, Int, String)) {
+  let at = fn(x, y) {
+    list.find(coords, fn(coord: #(Int, Int, String)) {
+      x == coord.0 && y == coord.1
+    })
+    |> result.unwrap(#(0, 0, ""))
+  }
 
-  let first_indices =
-    indexed
-    |> list.filter(fn(p) { pair.second(p) == pair.first(r) })
+  let next = case direction {
+    "up" -> at(start.0, start.1 + 1)
+    "down" -> at(start.0, start.1 - 1)
+    "left" -> at(start.0 - 1, start.1)
+    "right" -> at(start.0 + 1, start.1)
+    _ -> panic as "should never hit"
+  }
 
-  let second_indices =
-    indexed
-    |> list.filter(fn(p) { pair.second(p) == pair.second(r) })
+  let next_direction = case direction {
+    "up" -> "right"
+    "right" -> "down"
+    "down" -> "left"
+    "left" -> "up"
+    _ -> panic as "should never hit"
+  }
 
-  list.is_empty(first_indices)
-  || list.is_empty(second_indices)
-  || first_indices
-  |> list.all(fn(f) {
-    list.all(second_indices, fn(s) { pair.first(f) < pair.first(s) })
-  })
+  case
+    // oob
+    next == #(0, 0, "")
+  {
+    True -> route
+    False ->
+      case next.2 == "#" {
+        True -> walk(coords, [start, ..route], start, next_direction)
+        False -> walk(coords, [next, ..route], next, direction)
+      }
+  }
 }
