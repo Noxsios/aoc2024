@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/otp/task
 import gleam/result
 import gleam/string
 import simplifile
@@ -33,19 +34,21 @@ pub fn main() {
 
   coords
   |> list.filter(fn(coord) { coord.2 == "." })
-  |> list.filter(fn(potential) {
-    let mutated =
-      coords
-      |> list.map(fn(coord) {
-        case coord == potential {
-          True -> #(potential.0, potential.1, "#")
-          False -> coord
-        }
-      })
-    walk(mutated, [start], start, "up")
-    |> list.is_empty
+  |> list.map(fn(potential) {
+    // task.async(fn() {
+      let mutated =
+        coords
+        |> list.map(fn(coord) {
+          case coord == potential {
+            True -> #(potential.0, potential.1, "#")
+            False -> coord
+          }
+        })
+      walk(mutated, [start], start, "up") |> list.is_empty
+    // })
   })
-  |> list.length
+  // |> list.map(task.await(_, 60))
+  |> list.count(fn(l) { l == True })
   |> io.debug
 }
 
