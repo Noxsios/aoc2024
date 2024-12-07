@@ -68,8 +68,9 @@ fn walk(
     True -> route
     False ->
       case next.2 == "#" {
-        True -> walk(coords, [start, ..route], start, next_direction)
-        False -> walk(coords, [next, ..route], next, direction)
+        True ->
+          walk(coords, [start, ..route] |> list.reverse, start, next_direction)
+        False -> walk(coords, [next, ..route] |> list.reverse, next, direction)
       }
   }
 }
