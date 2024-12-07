@@ -33,18 +33,16 @@ pub fn main() {
 
   coords
   |> list.filter(fn(coord) { coord.2 == "." })
-  |> list.filter(fn(start) {
+  |> list.filter(fn(potential) {
     let mutated =
       coords
       |> list.map(fn(coord) {
-        case coord == start {
-          True -> #(start.0, start.1, "#")
+        case coord == potential {
+          True -> #(potential.0, potential.1, "#")
           False -> coord
         }
       })
     walk(mutated, [start], start, "up")
-    |> list.reverse
-    |> list.unique
     |> list.is_empty
   })
   |> list.length
