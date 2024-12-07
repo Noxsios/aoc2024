@@ -25,17 +25,6 @@ pub fn main() {
     })
     |> result.unwrap(#(0, 0, ""))
 
-  let coords =
-    coords
-    |> list.map(fn(coord) {
-      let #(x, y, _) = start
-      case coord == start {
-        True -> #(x, y, ".")
-        False -> coord
-      }
-    })
-
-  // im off by one, but where?
   walk(coords, [start], start, "up")
   |> list.unique
   |> io.debug
