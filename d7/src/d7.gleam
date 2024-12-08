@@ -1,106 +1,108 @@
+import gleam/int
 import gleam/io
 import gleam/list
-import gleam/otp/task
+import gleam/pair
 import gleam/result
 import gleam/string
 import simplifile
 
 pub fn main() {
   let assert Ok(in) = simplifile.read(from: "./input.txt")
-  let rows = in |> string.split("\n")
-  let coords =
-    rows
-    |> list.index_map(fn(row, i) {
-      row
-      |> string.split("")
-      |> list.index_map(fn(c, j) { #(j + 1, list.length(rows) - i, c) })
+  let lines = in |> string.split("\n")
+
+  let equations =
+    lines
+    |> list.map(fn(l) {
+      l
+      |> string.split_once(":")
+      |> result.unwrap(#("", ""))
+      |> pair.map_first(string.trim)
+      |> pair.map_first(fn(s) {
+        let assert Ok(want) = int.parse(s)
+        want
+      })
+      |> pair.map_second(string.trim)
+      |> pair.map_second(fn(s) {
+        string.replace(s, " ", "||") |> string.split("|")
+      })
+      |> pair.map_second(fn(args) { fill_blanks(args) })
     })
-    |> list.flatten
 
-  let start =
-    coords
-    |> list.find(fn(coord) {
-      let #(_, _, d) = coord
+  list.map(equations, fn(equation) {
+    // io.debug(equation)
+    let #(want, arg_combos) = equation
 
-      d == "^"
-    })
-    |> result.unwrap(#(0, 0, ""))
+    let is_satisfied =
+      list.any(arg_combos, fn(args) {
+        let assert Ok(start) =
+          args |> list.first |> result.unwrap("") |> int.parse
+        let got = eval(list.drop(args, 1), start)
+        got == want
+      })
 
-  walk(coords, [start], start, "up")
-  |> list.reverse
-  |> list.unique
-  |> list.length
-  |> io.debug
-
-  coords
-  |> list.filter(fn(coord) { coord.2 == "." })
-  |> list.map(fn(potential) {
-    // task.async(fn() {
-      let mutated =
-        coords
-        |> list.map(fn(coord) {
-          case coord == potential {
-            True -> #(potential.0, potential.1, "#")
-            False -> coord
-          }
-        })
-      walk(mutated, [start], start, "up") |> list.is_empty
-    // })
+    case is_satisfied {
+      True -> want
+      False -> 0
+    }
   })
-  // |> list.map(task.await(_, 60))
-  |> list.count(fn(l) { l == True })
+  |> list.fold(0, int.add)
   |> io.debug
 }
 
-fn walk(
-  coords,
-  route,
-  curr: #(Int, Int, String),
-  direction,
-) -> List(#(Int, Int, String)) {
-  let at = fn(x, y) {
-    list.find(coords, fn(coord: #(Int, Int, String)) {
-      x == coord.0 && y == coord.1
-    })
-    |> result.unwrap(#(0, 0, ""))
-  }
+fn eval(args, acc) {
+  let next = list.take(args, 2)
 
-  let next = case direction {
-    "up" -> at(curr.0, curr.1 + 1)
-    "down" -> at(curr.0, curr.1 - 1)
-    "left" -> at(curr.0 - 1, curr.1)
-    "right" -> at(curr.0 + 1, curr.1)
-    _ -> panic as "should never hit"
-  }
+  // io.debug(acc)
 
-  let next_direction = case direction {
-    "up" -> "right"
-    "right" -> "down"
-    "down" -> "left"
-    "left" -> "up"
-    _ -> panic as "should never hit"
-  }
+  case next {
+    [] -> acc
+    _ -> {
+      let assert Ok(op) = list.first(next)
+      let assert Ok(n2) = list.last(next) |> result.unwrap("") |> int.parse
 
-  let is_loop =
-    route
-    |> list.window_by_2
-    |> list.contains(#(next, curr))
-
-  case is_loop {
-    True -> []
-    // make this cleaner
-    False -> {
-      case
-        // oob
-        next == #(0, 0, "")
-      {
-        True -> route
-        False ->
-          case next.2 == "#" {
-            True -> walk(coords, [curr, ..route], curr, next_direction)
-            False -> walk(coords, [next, ..route], next, direction)
-          }
+      let result = case op {
+        "*" -> int.multiply(acc, n2)
+        "+" -> int.add(acc, n2)
+        _ -> panic as "never should happen"
       }
+
+      eval(list.drop(args, 2), result)
+    }
+  }
+}
+
+fn fill_blanks(args) {
+  let empty_positions =
+    list.index_map(args, fn(x, i) { #(x, i) })
+    |> list.filter(fn(xi) {
+      case xi {
+        #("", _) -> True
+        _ -> False
+      }
+    })
+  case list.is_empty(empty_positions) {
+    True -> [args]
+    False -> {
+      let assert Ok(i) = list.first(empty_positions)
+      let i = i |> pair.second
+
+      let with_plus =
+        list.index_map(args, fn(c, k) {
+          case k == i {
+            True -> "+"
+            False -> c
+          }
+        })
+
+      let with_star =
+        list.index_map(args, fn(c, k) {
+          case k == i {
+            True -> "*"
+            False -> c
+          }
+        })
+
+      list.flat_map([with_plus, with_star], fn(a) { fill_blanks(a) })
     }
   }
 }
