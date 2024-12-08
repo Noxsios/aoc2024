@@ -23,13 +23,12 @@ pub fn main() {
       })
       |> pair.map_second(string.trim)
       |> pair.map_second(fn(s) {
-        string.replace(s, " ", "||") |> string.split("|")
+        string.replace(s, " ", "//") |> string.split("/")
       })
       |> pair.map_second(fn(args) { fill_blanks(args) })
     })
 
   list.map(equations, fn(equation) {
-    // io.debug(equation)
     let #(want, arg_combos) = equation
 
     let is_satisfied =
@@ -52,8 +51,6 @@ pub fn main() {
 fn eval(args, acc) {
   let next = list.take(args, 2)
 
-  // io.debug(acc)
-
   case next {
     [] -> acc
     _ -> {
@@ -63,6 +60,11 @@ fn eval(args, acc) {
       let result = case op {
         "*" -> int.multiply(acc, n2)
         "+" -> int.add(acc, n2)
+        "||" -> {
+          let assert Ok(s) =
+            { int.to_string(acc) <> int.to_string(n2) } |> int.parse
+          s
+        }
         _ -> panic as "never should happen"
       }
 
@@ -102,7 +104,17 @@ fn fill_blanks(args) {
           }
         })
 
-      list.flat_map([with_plus, with_star], fn(a) { fill_blanks(a) })
+      let with_concat =
+        list.index_map(args, fn(c, k) {
+          case k == i {
+            True -> "||"
+            False -> c
+          }
+        })
+
+      list.flat_map([with_plus, with_star, with_concat], fn(a) {
+        fill_blanks(a)
+      })
     }
   }
 }
